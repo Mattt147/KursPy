@@ -1,10 +1,11 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import ttk, messagebox, scrolledtext, simpledialog
 import math
 import random
 from graph import floyd_warshall
 from matrix import matrix_multiplication, generate_matrix
 from sort import compare_sorts, generate_test_data
+from database import db
 
 class GraphCanvas:
     def __init__(self, canvas, width=800, height=600):
@@ -255,6 +256,15 @@ class GraphTab:
         
         ttk.Separator(left_panel, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
         
+        # Работа с БД
+        ttk.Label(left_panel, text="База данных:", font=("Arial", 10, "bold")).pack(pady=5)
+        ttk.Button(left_panel, text="Сохранить граф", 
+                  command=self.save_graph).pack(pady=5, fill=tk.X)
+        ttk.Button(left_panel, text="Загрузить граф", 
+                  command=self.load_graph).pack(pady=5, fill=tk.X)
+        
+        ttk.Separator(left_panel, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
+        
         # Настройки генерации
         ttk.Label(left_panel, text="Настройки генерации:", font=("Arial", 10, "bold")).pack(pady=5)
         ttk.Label(left_panel, text="Вершин:").pack(anchor=tk.W)
@@ -348,6 +358,96 @@ class GraphTab:
                 else:
                     formatted_row.append(f"{int(val):>4}")
             self.output_text.insert(tk.END, " ".join(formatted_row) + "\n")
+    
+    def save_graph(self):
+        """Сохранить граф в БД"""
+        matrix = self.graph_canvas.to_matrix()
+        if matrix is None:
+            messagebox.showwarning("Предупреждение", "Граф пуст. Невозможно сохранить.")
+            return
+        
+        name = simpledialog.askstring("Сохранение графа", "Введите название графа:")
+        if name:
+            try:
+                vertices = len(self.graph_canvas.vertices)
+                edges = len(self.graph_canvas.edges)
+                db.save_graph(name, vertices, edges, matrix)
+                messagebox.showinfo("Успех", f"Граф '{name}' сохранен в базу данных!")
+            except Exception as e:
+                messagebox.showerror("Ошибка", f"Не удалось сохранить граф: {e}")
+    
+    def load_graph(self):
+        """Загрузить граф из БД"""
+        graphs = db.get_all_graphs()
+        if not graphs:
+            messagebox.showinfo("Информация", "В базе данных нет сохраненных графов.")
+            return
+        
+        # Создаем диалог выбора
+        dialog = tk.Toplevel()
+        dialog.title("Загрузить граф")
+        dialog.geometry("500x400")
+        dialog.transient()
+        dialog.grab_set()
+        
+        ttk.Label(dialog, text="Выберите граф для загрузки:", font=("Arial", 11)).pack(pady=10)
+        
+        # Список графов
+        listbox = tk.Listbox(dialog, height=15, font=("Courier", 9))
+        listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        for graph in graphs:
+            listbox.insert(tk.END, f"{graph['name']} ({graph['vertices']} вершин, {graph['edges']} рёбер) - {graph['created_at']}")
+        
+        selected_graph = [None]
+        
+        def load():
+            selection = listbox.curselection()
+            if selection:
+                selected_graph[0] = graphs[selection[0]]
+                dialog.destroy()
+            else:
+                messagebox.showwarning("Предупреждение", "Выберите граф из списка")
+        
+        def cancel():
+            dialog.destroy()
+        
+        button_frame = tk.Frame(dialog)
+        button_frame.pack(pady=10)
+        
+        tk.Button(button_frame, text="Загрузить", command=load, font=("Arial", 11),
+                 width=12, height=2).pack(side=tk.LEFT, padx=10)
+        tk.Button(button_frame, text="Отмена", command=cancel, font=("Arial", 11),
+                 width=12, height=2).pack(side=tk.LEFT, padx=10)
+        
+        dialog.wait_window()
+        
+        if selected_graph[0]:
+            graph = selected_graph[0]
+            # Восстанавливаем граф из матрицы
+            self.graph_canvas.clear()
+            matrix = graph['matrix']
+            n = len(matrix)
+            
+            # Размещаем вершины по кругу
+            center_x, center_y = 400, 300
+            radius = 200
+            
+            for i in range(n):
+                angle = 2 * math.pi * i / n
+                x = center_x + radius * math.cos(angle)
+                y = center_y + radius * math.sin(angle)
+                self.graph_canvas.vertices.append((x, y, i))
+                self.graph_canvas.vertex_id_counter = max(self.graph_canvas.vertex_id_counter, i + 1)
+            
+            # Восстанавливаем рёбра
+            for i in range(n):
+                for j in range(i + 1, n):
+                    if matrix[i][j] != 0:
+                        self.graph_canvas.edges.append((i, j, matrix[i][j]))
+            
+            self.graph_canvas.draw()
+            messagebox.showinfo("Успех", f"Граф '{graph['name']}' загружен!")
 
 
 class MatrixTab:
@@ -398,6 +498,15 @@ class MatrixTab:
                   command=lambda: self.edit_matrix("A")).pack(pady=5, fill=tk.X)
         ttk.Button(left_panel, text="Редактировать матрицу B", 
                   command=lambda: self.edit_matrix("B")).pack(pady=5, fill=tk.X)
+        
+        ttk.Separator(left_panel, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
+        
+        # Работа с БД
+        ttk.Label(left_panel, text="База данных:", font=("Arial", 10, "bold")).pack(pady=5)
+        ttk.Button(left_panel, text="Сохранить матрицы", 
+                  command=self.save_matrices).pack(pady=5, fill=tk.X)
+        ttk.Button(left_panel, text="Загрузить матрицы", 
+                  command=self.load_matrices).pack(pady=5, fill=tk.X)
         
         # Центральная панель - матрицы
         center_panel = ttk.Frame(self.frame)
@@ -637,6 +746,90 @@ class MatrixTab:
                 self.result_text.insert(tk.END, " ".join(f"{val:>6}" for val in row) + "\n")
         except ValueError as e:
             messagebox.showerror("Ошибка", str(e))
+    
+    def save_matrices(self):
+        """Сохранить матрицы в БД"""
+        if self.matrix_a is None or self.matrix_b is None:
+            messagebox.showwarning("Предупреждение", "Матрицы пусты. Невозможно сохранить.")
+            return
+        
+        name = simpledialog.askstring("Сохранение матриц", "Введите название:")
+        if name:
+            try:
+                result = None
+                # Пытаемся получить результат из текстового поля
+                result_text = self.result_text.get(1.0, tk.END).strip()
+                if "Результирующая матрица:" in result_text:
+                    # Можно попытаться распарсить результат, но для простоты оставим None
+                    pass
+                
+                db.save_matrices(name, self.matrix_a, self.matrix_b, result)
+                messagebox.showinfo("Успех", f"Матрицы '{name}' сохранены в базу данных!")
+            except Exception as e:
+                messagebox.showerror("Ошибка", f"Не удалось сохранить: {e}")
+    
+    def load_matrices(self):
+        """Загрузить матрицы из БД"""
+        matrices = db.get_all_matrices()
+        if not matrices:
+            messagebox.showinfo("Информация", "В базе данных нет сохраненных матриц.")
+            return
+        
+        # Создаем диалог выбора
+        dialog = tk.Toplevel()
+        dialog.title("Загрузить матрицы")
+        dialog.geometry("500x400")
+        dialog.transient()
+        dialog.grab_set()
+        
+        ttk.Label(dialog, text="Выберите матрицы для загрузки:", font=("Arial", 11)).pack(pady=10)
+        
+        listbox = tk.Listbox(dialog, height=15, font=("Courier", 9))
+        listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        for m in matrices:
+            size_a = f"{len(m['matrix_a'])}×{len(m['matrix_a'][0]) if m['matrix_a'] else 0}"
+            size_b = f"{len(m['matrix_b'])}×{len(m['matrix_b'][0]) if m['matrix_b'] else 0}"
+            listbox.insert(tk.END, f"{m['name']} (A: {size_a}, B: {size_b}) - {m['created_at']}")
+        
+        selected_matrix = [None]
+        
+        def load():
+            selection = listbox.curselection()
+            if selection:
+                selected_matrix[0] = matrices[selection[0]]
+                dialog.destroy()
+            else:
+                messagebox.showwarning("Предупреждение", "Выберите матрицы из списка")
+        
+        def cancel():
+            dialog.destroy()
+        
+        button_frame = tk.Frame(dialog)
+        button_frame.pack(pady=10)
+        
+        tk.Button(button_frame, text="Загрузить", command=load, font=("Arial", 11),
+                 width=12, height=2).pack(side=tk.LEFT, padx=10)
+        tk.Button(button_frame, text="Отмена", command=cancel, font=("Arial", 11),
+                 width=12, height=2).pack(side=tk.LEFT, padx=10)
+        
+        dialog.wait_window()
+        
+        if selected_matrix[0]:
+            m = selected_matrix[0]
+            self.matrix_a = m['matrix_a']
+            self.matrix_b = m['matrix_b']
+            self.rows_a_var.set(str(len(self.matrix_a)))
+            self.cols_a_var.set(str(len(self.matrix_a[0]) if self.matrix_a else 0))
+            self.rows_b_var.set(str(len(self.matrix_b)))
+            self.cols_b_var.set(str(len(self.matrix_b[0]) if self.matrix_b else 0))
+            self.update_matrix_display()
+            if m['result']:
+                self.result_text.delete(1.0, tk.END)
+                self.result_text.insert(tk.END, "Результирующая матрица:\n")
+                for row in m['result']:
+                    self.result_text.insert(tk.END, " ".join(f"{val:>6}" for val in row) + "\n")
+            messagebox.showinfo("Успех", f"Матрицы '{m['name']}' загружены!")
 
 
 class SortTab:
@@ -680,6 +873,15 @@ class SortTab:
         ttk.Button(left_panel, text="Редактировать массив", 
                   command=self.edit_array).pack(pady=5, fill=tk.X)
         
+        ttk.Separator(left_panel, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
+        
+        # Работа с БД
+        ttk.Label(left_panel, text="База данных:", font=("Arial", 10, "bold")).pack(pady=5)
+        ttk.Button(left_panel, text="Сохранить результат", 
+                  command=self.save_sort_result).pack(pady=5, fill=tk.X)
+        ttk.Button(left_panel, text="Загрузить результаты", 
+                  command=self.load_sort_results).pack(pady=5, fill=tk.X)
+        
         # Центральная панель - входной массив
         center_panel = ttk.Frame(self.frame)
         center_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -711,6 +913,7 @@ class SortTab:
         self.comparison_text.pack(fill=tk.BOTH, expand=True)
         
         self.array = None
+        self.last_results = None
     
     def generate_array(self):
         """Генерация случайного массива"""
@@ -874,6 +1077,116 @@ class SortTab:
             preview = ", ".join(str(x) for x in sorted_arr[:50])
             self.results_text.insert(tk.END, f"{preview}...\n")
             self.results_text.insert(tk.END, f"\nВсего элементов: {len(sorted_arr)}")
+        
+        # Сохраняем результаты в БД
+        self.last_results = results
+    
+    def save_sort_result(self):
+        """Сохранить результаты сортировки в БД"""
+        if not hasattr(self, 'last_results') or not self.last_results:
+            messagebox.showwarning("Предупреждение", "Сначала запустите сравнение алгоритмов.")
+            return
+        
+        if self.array is None:
+            messagebox.showwarning("Предупреждение", "Массив пуст.")
+            return
+        
+        name = simpledialog.askstring("Сохранение результатов", "Введите название:")
+        if name:
+            try:
+                for algorithm_name, data in self.last_results.items():
+                    db.save_sort_result(
+                        name=f"{name} - {algorithm_name}",
+                        array_size=len(self.array),
+                        input_array=self.array,
+                        algorithm=algorithm_name,
+                        sorted_array=data['sorted_array'],
+                        comparisons=data['comparisons'],
+                        time_taken=data['time']
+                    )
+                messagebox.showinfo("Успех", f"Результаты '{name}' сохранены в базу данных!")
+            except Exception as e:
+                messagebox.showerror("Ошибка", f"Не удалось сохранить: {e}")
+    
+    def load_sort_results(self):
+        """Загрузить результаты сортировки из БД"""
+        sorts = db.get_all_sorts()
+        if not sorts:
+            messagebox.showinfo("Информация", "В базе данных нет сохраненных результатов.")
+            return
+        
+        # Создаем диалог выбора
+        dialog = tk.Toplevel()
+        dialog.title("Загрузить результаты")
+        dialog.geometry("600x500")
+        dialog.transient()
+        dialog.grab_set()
+        
+        ttk.Label(dialog, text="Выберите результаты для загрузки:", font=("Arial", 11)).pack(pady=10)
+        
+        listbox = tk.Listbox(dialog, height=20, font=("Courier", 9))
+        listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        for s in sorts:
+            listbox.insert(tk.END, f"{s['name']} | {s['algorithm']} | Размер: {s['array_size']} | Время: {s['time_taken']:.6f}с")
+        
+        selected_sort = [None]
+        
+        def load():
+            selection = listbox.curselection()
+            if selection:
+                selected_sort[0] = sorts[selection[0]]
+                dialog.destroy()
+            else:
+                messagebox.showwarning("Предупреждение", "Выберите результат из списка")
+        
+        def cancel():
+            dialog.destroy()
+        
+        button_frame = tk.Frame(dialog)
+        button_frame.pack(pady=10)
+        
+        tk.Button(button_frame, text="Загрузить", command=load, font=("Arial", 11),
+                 width=12, height=2).pack(side=tk.LEFT, padx=10)
+        tk.Button(button_frame, text="Отмена", command=cancel, font=("Arial", 11),
+                 width=12, height=2).pack(side=tk.LEFT, padx=10)
+        
+        dialog.wait_window()
+        
+        if selected_sort[0]:
+            s = selected_sort[0]
+            self.array = s['input_array']
+            self.update_input_display()
+            
+            # Показываем результаты
+            self.results_text.delete(1.0, tk.END)
+            self.comparison_text.delete(1.0, tk.END)
+            
+            self.results_text.insert(tk.END, f"Загруженный массив ({s['array_size']} элементов):\n")
+            if len(s['input_array']) <= 20:
+                self.results_text.insert(tk.END, ", ".join(str(x) for x in s['input_array']) + "\n\n")
+            else:
+                preview = ", ".join(str(x) for x in s['input_array'][:20])
+                self.results_text.insert(tk.END, f"{preview}...\n\n")
+            
+            self.results_text.insert(tk.END, f"Алгоритм: {s['algorithm']}\n")
+            self.results_text.insert(tk.END, f"Время: {s['time_taken']:.6f} сек\n")
+            self.results_text.insert(tk.END, f"Сравнений: {s['comparisons']}\n\n")
+            
+            sorted_arr = s['sorted_array']
+            self.results_text.insert(tk.END, "Отсортированный массив:\n")
+            if len(sorted_arr) <= 50:
+                self.results_text.insert(tk.END, ", ".join(str(x) for x in sorted_arr))
+            else:
+                preview = ", ".join(str(x) for x in sorted_arr[:50])
+                self.results_text.insert(tk.END, f"{preview}...\n")
+                self.results_text.insert(tk.END, f"\nВсего элементов: {len(sorted_arr)}")
+            
+            self.comparison_text.insert(tk.END, f"=== {s['algorithm']} ===\n\n")
+            self.comparison_text.insert(tk.END, f"Время: {s['time_taken']:.6f} сек\n")
+            self.comparison_text.insert(tk.END, f"Сравнений: {s['comparisons']}\n")
+            
+            messagebox.showinfo("Успех", f"Результаты '{s['name']}' загружены!")
 
 
 class MainApplication:
