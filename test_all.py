@@ -4,7 +4,7 @@
 import unittest
 from graph import floyd_warshall
 from matrix import matrix_multiplication, generate_matrix
-from sort import bubble_sort, quick_sort, selection_sort, compare_sorts, generate_test_data
+from sort import bubble_sort, selection_sort, compare_sorts, generate_test_data
 
 
 # ============================================================================
@@ -263,47 +263,6 @@ class TestBubbleSort(unittest.TestCase):
         self.assertEqual(sorted_arr, [-5, -3, -2, -1, 0, 2])
 
 
-class TestQuickSort(unittest.TestCase):
-    """Тесты для быстрой сортировки"""
-    
-    def test_simple_sort(self):
-        arr = [3, 1, 4, 1, 5, 9, 2, 6]
-        sorted_arr, comparisons, time_taken = quick_sort(arr)
-        self.assertEqual(sorted_arr, [1, 1, 2, 3, 4, 5, 6, 9])
-        self.assertGreater(comparisons, 0)
-        self.assertEqual(arr, [3, 1, 4, 1, 5, 9, 2, 6])
-    
-    def test_already_sorted(self):
-        arr = [1, 2, 3, 4, 5]
-        sorted_arr, comparisons, time_taken = quick_sort(arr)
-        self.assertEqual(sorted_arr, [1, 2, 3, 4, 5])
-    
-    def test_reverse_sorted(self):
-        arr = [5, 4, 3, 2, 1]
-        sorted_arr, comparisons, time_taken = quick_sort(arr)
-        self.assertEqual(sorted_arr, [1, 2, 3, 4, 5])
-    
-    def test_single_element(self):
-        arr = [42]
-        sorted_arr, comparisons, time_taken = quick_sort(arr)
-        self.assertEqual(sorted_arr, [42])
-    
-    def test_empty_array(self):
-        arr = []
-        sorted_arr, comparisons, time_taken = quick_sort(arr)
-        self.assertEqual(sorted_arr, [])
-    
-    def test_duplicates(self):
-        arr = [3, 3, 3, 1, 1, 2, 2]
-        sorted_arr, comparisons, time_taken = quick_sort(arr)
-        self.assertEqual(sorted_arr, [1, 1, 2, 2, 3, 3, 3])
-    
-    def test_negative_numbers(self):
-        arr = [-3, -1, -5, 2, 0, -2]
-        sorted_arr, comparisons, time_taken = quick_sort(arr)
-        self.assertEqual(sorted_arr, [-5, -3, -2, -1, 0, 2])
-
-
 class TestSelectionSort(unittest.TestCase):
     """Тесты для сортировки выбором"""
     
@@ -353,12 +312,10 @@ class TestCompareSorts(unittest.TestCase):
         results = compare_sorts(arr)
         
         self.assertIn("Пузырьковая", results)
-        self.assertIn("Быстрая", results)
         self.assertIn("Выбором", results)
         
         expected = [1, 1, 2, 3, 4, 5, 6, 9]
         self.assertEqual(results["Пузырьковая"]["sorted_array"], expected)
-        self.assertEqual(results["Быстрая"]["sorted_array"], expected)
         self.assertEqual(results["Выбором"]["sorted_array"], expected)
         
         for name, data in results.items():
@@ -428,15 +385,10 @@ class TestAllSortsConsistency(unittest.TestCase):
         
         for arr in test_cases:
             bubble_result, _, _ = bubble_sort(arr)
-            quick_result, _, _ = quick_sort(arr)
             selection_result, _, _ = selection_sort(arr)
             
-            self.assertEqual(bubble_result, quick_result,
-                           f"Bubble и Quick дали разные результаты для {arr}")
             self.assertEqual(bubble_result, selection_result,
                            f"Bubble и Selection дали разные результаты для {arr}")
-            self.assertEqual(quick_result, selection_result,
-                           f"Quick и Selection дали разные результаты для {arr}")
 
 
 # ============================================================================

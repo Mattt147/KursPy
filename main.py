@@ -4,7 +4,7 @@ import math
 import random
 from graph import floyd_warshall
 from matrix import matrix_multiplication, generate_matrix
-from sort import compare_sorts, generate_test_data
+from sort import compare_sorts
 from database import db
 
 class GraphCanvas:

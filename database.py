@@ -3,8 +3,6 @@
 """
 import sqlite3
 import json
-from datetime import datetime
-import os
 
 
 class Database:
@@ -109,40 +107,6 @@ class Database:
         conn.close()
         return graphs
     
-    def get_graph(self, graph_id):
-        """Получить граф по ID"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT id, name, vertices, edges, matrix, created_at
-            FROM graphs
-            WHERE id = ?
-        ''', (graph_id,))
-        
-        row = cursor.fetchone()
-        conn.close()
-        
-        if row:
-            return {
-                'id': row[0],
-                'name': row[1],
-                'vertices': row[2],
-                'edges': row[3],
-                'matrix': json.loads(row[4]),
-                'created_at': row[5]
-            }
-        return None
-    
-    def delete_graph(self, graph_id):
-        """Удалить граф"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('DELETE FROM graphs WHERE id = ?', (graph_id,))
-        conn.commit()
-        conn.close()
-    
     # ========================================================================
     # РАБОТА С МАТРИЦАМИ
     # ========================================================================
@@ -190,40 +154,6 @@ class Database:
         
         conn.close()
         return matrices
-    
-    def get_matrices(self, matrix_id):
-        """Получить матрицы по ID"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT id, name, matrix_a, matrix_b, result, created_at
-            FROM matrices
-            WHERE id = ?
-        ''', (matrix_id,))
-        
-        row = cursor.fetchone()
-        conn.close()
-        
-        if row:
-            return {
-                'id': row[0],
-                'name': row[1],
-                'matrix_a': json.loads(row[2]),
-                'matrix_b': json.loads(row[3]),
-                'result': json.loads(row[4]) if row[4] else None,
-                'created_at': row[5]
-            }
-        return None
-    
-    def delete_matrices(self, matrix_id):
-        """Удалить матрицы"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('DELETE FROM matrices WHERE id = ?', (matrix_id,))
-        conn.commit()
-        conn.close()
     
     # ========================================================================
     # РАБОТА С СОРТИРОВКОЙ
@@ -288,96 +218,6 @@ class Database:
         conn.close()
         return sorts
     
-    def get_sort(self, sort_id):
-        """Получить результат сортировки по ID"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT id, name, array_size, input_array, algorithm,
-                   sorted_array, comparisons, time_taken, created_at
-            FROM sorts
-            WHERE id = ?
-        ''', (sort_id,))
-        
-        row = cursor.fetchone()
-        conn.close()
-        
-        if row:
-            return {
-                'id': row[0],
-                'name': row[1],
-                'array_size': row[2],
-                'input_array': json.loads(row[3]),
-                'algorithm': row[4],
-                'sorted_array': json.loads(row[5]),
-                'comparisons': row[6],
-                'time_taken': row[7],
-                'created_at': row[8]
-            }
-        return None
-    
-    def delete_sort(self, sort_id):
-        """Удалить результат сортировки"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('DELETE FROM sorts WHERE id = ?', (sort_id,))
-        conn.commit()
-        conn.close()
-    
-    # ========================================================================
-    # СТАТИСТИКА
-    # ========================================================================
-    
-    def get_stats(self):
-        """Получить статистику по БД"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        stats = {}
-        
-        # Количество графов
-        cursor.execute('SELECT COUNT(*) FROM graphs')
-        stats['graphs_count'] = cursor.fetchone()[0]
-        
-        # Количество матриц
-        cursor.execute('SELECT COUNT(*) FROM matrices')
-        stats['matrices_count'] = cursor.fetchone()[0]
-        
-        # Количество результатов сортировки
-        cursor.execute('SELECT COUNT(*) FROM sorts')
-        stats['sorts_count'] = cursor.fetchone()[0]
-        
-        # Среднее время сортировки по алгоритмам
-        cursor.execute('''
-            SELECT algorithm, AVG(time_taken), AVG(comparisons)
-            FROM sorts
-            GROUP BY algorithm
-        ''')
-        stats['sort_stats'] = {}
-        for row in cursor.fetchall():
-            stats['sort_stats'][row[0]] = {
-                'avg_time': row[1],
-                'avg_comparisons': row[2]
-            }
-        
-        conn.close()
-        return stats
-    
-    def clear_all(self):
-        """Очистить все таблицы"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('DELETE FROM graphs')
-        cursor.execute('DELETE FROM matrices')
-        cursor.execute('DELETE FROM sorts')
-        
-        conn.commit()
-        conn.close()
-
-
 # Глобальный экземпляр БД
 db = Database()
 

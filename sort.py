@@ -18,36 +18,6 @@ def bubble_sort(arr):
     time_taken = time.time() - start_time
     return arr_copy, comparisons, time_taken
 
-def quick_sort(arr):
-    """Быстрая сортировка O(n log n)"""
-    comparisons = 0
-    start_time = time.time()
-    
-    def _quick_sort_recursive(sub_arr):
-        nonlocal comparisons
-        if len(sub_arr) <= 1:
-            return sub_arr
-        
-        pivot = sub_arr[len(sub_arr) // 2]
-        left = []
-        middle = []
-        right = []
-        
-        for x in sub_arr:
-            comparisons += 1
-            if x < pivot:
-                left.append(x)
-            elif x == pivot:
-                middle.append(x)
-            else:
-                right.append(x)
-        
-        return _quick_sort_recursive(left) + middle + _quick_sort_recursive(right)
-    
-    result = _quick_sort_recursive(arr.copy())
-    time_taken = time.time() - start_time
-    return result, comparisons, time_taken
-
 def selection_sort(arr):
     """Сортировка выбором O(n²)"""
     comparisons = 0
@@ -75,7 +45,6 @@ def compare_sorts(arr):
     # Тестируем каждый алгоритм
     algorithms = [
         ("Пузырьковая", bubble_sort),
-        ("Быстрая", quick_sort),
         ("Выбором", selection_sort)
     ]
     
